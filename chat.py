@@ -1,6 +1,25 @@
 import streamlit as st
 from streamlit_chat import message
 
+from openai_service import AzureOpenAIService
+import os
+
+# 環境変数から取得
+AOAI_CHAT_DEPLOYMENT = os.getenv('AOAI_CHAT_DEPLOYMENT')
+
+# システムプロンプトを設定
+system_prompt_chat = """あなたはAIアシスタントです。問い合わせに対し「# 検索結果」の内容をもとに回答してください。
+
+# 制約条件
+- 検索結果がない場合は、一般的な情報から回答できる場合は回答してください。回答できない場合は不明瞭な回答をしてはいけません。
+- 構造的に回答する必要がある場合は、Markdownで構造的に回答してください。
+- チャット履歴の「参考情報」は無視してください。
+- 「参考情報」はシステムが自動で付与しています。あなたの回答に含めてはいけません。
+"""
+
+# client
+aoai_service = AzureOpenAIService()
+
 st.set_page_config(layout='wide')
 st.title('Udemy RAG')
 
@@ -40,12 +59,28 @@ if user_message:
       'content': user_message
   })
   
-  # TODO: AIからの回答を取得
-  assistant_text = "AIの回答"  # ここにAIからの回答を取得する処理を追加
+  messges = [
+      *st.session_state['chat_messages'],
+  ]
   
-  # AIからの回答を表示
+  # OpenAI Chat APIで回答を取得
+  response = aoai_service.openai.chat.completions.create(
+    model = AOAI_CHAT_DEPLOYMENT,
+    messages = messges,
+    stream = True,
+  )
+  
+  # AIからの回答をStreamで表示
   with st.chat_message('assistant', avatar='assistant'):
-    st.write(assistant_text)
+    place_assisantant = st.empty()
+    for chunk in response:
+      if chunk.choices:
+        content = chunk.choices[0].delta.content
+        if content:
+          assistant_text += content
+          place_assisantant.write(assistant_text)
+      else:
+        content = None
     
   # AIからの回答をsession_stateのchat_messageに保存
   st.session_state['chat_messages'].append({
