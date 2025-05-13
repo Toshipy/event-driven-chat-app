@@ -65,7 +65,7 @@ if user_message:
   # CosmosDBでベクトル検索
   search_items = cosmos_service.get_items_by_vector(
       aoai_service.get_embedding(input=user_message),
-      VECTOR_SCORE_THRESHOLD=0.7
+      VECTOR_SCORE_THRESHOLD
   )
   
   # システムメッセージに検索結果を追加
