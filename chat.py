@@ -2,10 +2,12 @@ import streamlit as st
 from streamlit_chat import message
 
 from openai_service import AzureOpenAIService
+from cosmos_service import CosmosService
 import os
 
 # 環境変数から取得
 AOAI_CHAT_DEPLOYMENT = os.getenv('AOAI_CHAT_DEPLOYMENT')
+VECTOR_SCORE_THRESHOLD = float(os.getenv('VECTOR_SCORE_THRESHOLD'))
 
 # システムプロンプトを設定
 system_prompt_chat = """あなたはAIアシスタントです。問い合わせに対し「# 検索結果」の内容をもとに回答してください。
@@ -19,6 +21,7 @@ system_prompt_chat = """あなたはAIアシスタントです。問い合わせ
 
 # client
 aoai_service = AzureOpenAIService()
+cosmos_service = CosmosService()
 
 st.set_page_config(layout='wide')
 st.title('Udemy RAG')
@@ -59,7 +62,30 @@ if user_message:
       'content': user_message
   })
   
+  # CosmosDBでベクトル検索
+  search_items = cosmos_service.get_items_by_vector(
+      aoai_service.get_embedding(input=user_message),
+      VECTOR_SCORE_THRESHOLD=0.7
+  )
+  
+  # システムメッセージに検索結果を追加
+  system_message = system_prompt_chat + "\n# 検索結果\n"
+  
+  # 画面に表示する検索結果
+  display_searched_file = '\n\n# 参考情報\n'
+  for index, result in enumerate(search_items):
+    # ループ番号を付与してファイルの内容をシステムメッセージに追加
+    system_message += f"\n\n--- {index+1} --- \n{result['content']}\n\n"
+    # 画面に表示する検索結果にファイルの内容を追加
+    display_searched_file += f"\n\n--- {index+1} --- \n{result['file_name']} (page{result['page_number']}) : {result['SimilarityScore']}\n\n"
+  print(f'system_message:{system_message}')
+  
   messges = [
+      # システムメッセージ
+      {
+          'role': 'system',
+          'content': system_message
+      },
       *st.session_state['chat_messages'],
   ]
   
