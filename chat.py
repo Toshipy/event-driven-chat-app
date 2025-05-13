@@ -24,7 +24,7 @@ aoai_service = AzureOpenAIService()
 cosmos_service = CosmosService()
 
 st.set_page_config(layout='wide')
-st.title('Udemy RAG')
+st.title('RAG')
 
 # チャットメッセージを管理するsession_state
 if 'chat_messages' not in st.session_state:
